@@ -1,0 +1,18 @@
+name = "LatticeSurgeryCCZStateExample"
+uuid = "40bf5bed-6ca6-4bea-aa2c-a9a56a573bbf"
+authors = ["Ben Criger"]
+version = "1.0.0-DEV"
+
+[deps]
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+QuantumClifford = "0525e862-1e90-11e9-3e4d-1b39d7109de1"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
