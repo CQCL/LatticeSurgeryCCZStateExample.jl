@@ -350,6 +350,22 @@ end
 end
 
 @testset "Applying Layers to ComputationalStates" begin
+    qs = LS.all_qubits[1:4]
+    meas_name = "last_z"
+    gates = [LS.Preparation(LS.z_on(qs[2])), LS.QC.sCNOT(1, 2),
+                LS.QC.sCNOT(2, 3), LS.QC.sCNOT(3, 4),
+                LS.Measurement(meas_name, LS.z_on(qs[4]))]
+
+    stabs = [LS.x_on_set(qs[1:2])]
+
+    layer = LS.Layer(gates, stabs)
+
+    comp_state = LS.ComputationalState(LS.x_on(qs[1]),
+        Dict(meas_name => 0x00))
+
+    new_layer = LS.apply(layer, comp_state)
+    @test new_layer.meas_output[meas_name] == 0x01
+    @test new_layer.pauli == LS.x_on(qs[3])
 end
 
 @testset "Lattice Surgery Logical Operators" begin
@@ -364,9 +380,12 @@ end
     end
 end
 
-@testset "Are our circuits d=2 fault-tolerant?" begin
-    # @test LS.is_d_2_fault_tolerant(LS.single_memory_circuit())
-    # @test LS.is_d_2_fault_tolerant(LS.lattice_surgery_circuit())
+@testset "Is d = 2 fault tolerance correctly diagnosed?" begin
+    @test LS.is_d_2_fault_tolerant(LS.single_memory_circuit())
+    @test !LS.is_d_2_fault_tolerant(LS.d_2_repetition_code_circuit())
+    # @test LS.is_d_2_fault_tolerant(LS.lattice_surgery_circuit()) # slow
+    # Want to get another circuit that has the ZZZZ measurement set up
+    # backwards so we can assert that it doesn't work.
 end
 
 @testset "Combining ComputationalStates" begin
@@ -381,4 +400,9 @@ end
 
     combined_state = LS.combine(comp_state_1, comp_state_2)
     @test combined_state == comp_state_12
+end
+
+@testset "Malicious fault pair counting" begin
+    # Calculation in a neighbouring file, `gate_only_manual_fault_count.txt`
+    @test LS.malicious_gate_fault_pairs(LS.d_2_repetition_code_circuit()) == 640
 end

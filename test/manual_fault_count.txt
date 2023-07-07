@@ -1,0 +1,175 @@
+Manual fault counting
+
+To test the fault pair counting code, I'm counting fault pairs for a small circuit by hand.
+
+qubits 0 1 2
+
+0 input 0
+1 input 2
+
+2 z_prep 1
+3 cnot 0 1
+4 cnot 2 1
+5 z_meas 1
+
+6 z_prep 1
+7 cnot 0 1
+8 cnot 2 1
+9 z_meas 1
+
+input 0:
+dx	fault		syndrome		pauli
+0	X 			11 				XI
+1	Y 			11 				YI
+2	Z 			00 				ZI
+
+input 1:
+dx	fault		syndrome		pauli
+0	X 			11 				IX
+1	Y 			11 				IY
+2	Z 			00 				IZ
+
+gate 2:
+dx	fault		syndrome		pauli
+0	X 			10 				II
+
+gate 3:
+dx	fault		syndrome		pauli
+0	IX 			10 				II
+1	IY 			10 				IZ
+2	IZ 			00 				IZ
+3	XI 			01 				XI
+4	XX 			11 				XI
+5	XY 			11 				XZ
+6	XZ 			01 				XZ
+7	YI 			01 				YI
+8	YX 			11 				YI
+9	YY 			11 				YZ
+10	YZ 			01 				YZ
+11	ZI 			00 				ZI
+12	ZX 			10 				ZI
+13	ZY 			10 				ZZ
+14	ZZ 			00 				ZZ
+
+gate 4:
+dx	fault		syndrome		pauli
+0	IX 			01 				IX
+1	IY 			01 				IY
+2	IZ 			00 				IZ
+3	XI 			10 				II
+4	XX 			11 				IX
+5	XY 			11 				IY
+6	XZ 			10 				IZ
+7	YI 			10 				II
+8	YX 			11 				IX
+9	YY 			11 				IY
+10	YZ 			10 				IZ
+11	ZI 			00 				II
+12	ZX 			01 				IX
+13	ZY 			01 				IY
+14	ZZ 			00 				IZ
+
+gate 5:
+dx	fault		syndrome		pauli
+0	X 			10 				II
+
+gate 6:
+dx	fault		syndrome		pauli
+0	X 			01 				II
+
+gate 7:
+dx	fault		syndrome		pauli
+0	IX 			01 				II
+1	IY 			01 				IZ
+2	IZ 			00 				IZ
+3	XI 			00 				XI
+4	XX 			01 				XI
+5	XY 			01 				XZ
+6	XZ 			00 				XZ
+7	YI 			00 				YI
+8	YX 			01 				YI
+9	YY 			01 				YZ
+10	YZ 			00 				YZ
+11	ZI 			00 				ZI
+12	ZX 			01 				ZI
+13	ZY 			01 				ZZ
+14	ZZ 			00 				ZZ
+
+gate 8:
+dx	fault		syndrome		pauli
+0	IX 			00 				IX
+1	IY 			00 				IY
+2	IZ 			00 				IZ
+3	XI 			01 				II
+4	XX 			01 				IX
+5	XY 			01 				IY
+6	XZ 			01 				IZ
+7	YI 			01 				II
+8	YX 			01 				IX
+9	YY 			01 				IY
+10	YZ 			01 				IZ
+11	ZI 			00 				II
+12	ZX 			00 				IX
+13	ZY 			00 				IY
+14	ZZ 			00 				IZ
+
+gate 9:
+dx	fault		syndrome		pauli
+0	X 			01 				II
+
+There are 70 faults here, and I'm not about to manually count 2415 possible pairs. 
+Let's see how many faults are equivalent up to stabilizers of the circuit code, so we can reduce the count.
+
+set_dx	syndrome 	pauli 	anticommutes?	logical			(gate_dx, fault_dx)
+0		11			XI / YZ		1			X				{(0, 0), (3, 4)}
+1		11			YI / XZ		1			Y				{(0, 1), (3, 5), (3, 8)}
+2		00			ZI / IZ		0			Z				{(0, 2), (1, 2), (3, 2), (3, 11), (4, 2), (4, 14), (7, 2), (7, 11), (8, 2), (8, 14)}
+3		11 			IX / ZY		1			I				{(1, 0), (4, 4), (4, 8)}
+4		11			IY / ZX		1			Z				{(1, 1), (4, 5), (4, 9)}
+5		10 			II / ZZ		0			I				{(2, 0), (3, 0), (3, 13), (4, 3), (4, 7), (5, 0)}
+6		10 			IZ / ZI		0			Z				{(3, 1), (3, 12), (4, 6), (4, 10)}
+7		01			XI / YZ		1			X				{(3, 3), (3, 10), (7, 4), (7, 9)}
+8		01 			YI / XZ		1			Y				{(3, 6), (3, 7), (7, 5), (7, 8)}
+9		11 			IZ / ZI 	0			Z				{(3, 9)}
+10		00			II / ZZ		0			I				{(3, 14), (4, 11), (7, 14), (8, 11)}
+11		01 			IX / ZY		1			I				{(4, 0), (4, 12), (8, 4), (8, 8)}
+12		01 			IY / ZX		1			Z				{(4, 1), (4, 13), (8, 5), (8, 9)}
+13		01 			II / ZZ		0			I				{(6, 0), (7, 0), (7, 13), (8, 3), (8, 7), (9, 0)}
+14		01 			IZ / ZI		0			Z				{(7, 1), (7, 12), (8, 6), (8, 10)}
+15		00 			XI / YZ		1			X				{(7, 3), (7, 10)}
+16		00 			YI / XZ		1			Y				{(7, 6), (7, 7)}
+17		00 			IX / ZY		1			I				{(8, 0), (8, 12)}
+18		00			IY / ZX		1			Z				{(8, 1), (8, 13)}
+
+So there are 19 sets. No pair of errors from the same set can be malicious, since they cancel exactly. 
+Sets 0, 1, 3, 4, 7, 8, 11, 12, 15, 16, 17, and 18 result in Paulis that would cause a syndrome. 
+Any pairs of faults taken from one of these and one of 2, 5, 6, 9, 10, 13, 14 cannot be malicious, since it would cause a syndrome in a subsequent round of perfect measurement.
+For pairs that don't result in a syndrome, we want to know which ones result in a logical (Z (ZI / IZ), X (XX / YY), Y (YX / XY)).
+This requires us to multiply by the pure error IX (which commutes with the logicals, and anticommutes with the stabilizer) for sets that generate syndromes.
+
+For each set, members of the following partner sets create malicious pairs:
+
+set_dx 	partners							size 	partner_size							product
+0 		{1, 3, 4, 8, 11, 12, 16, 17, 18}	2 		sum(3, 3, 3, 4, 4, 4, 2, 2, 2)	= 27 	54
+1 		{3, 4, 7, 11, 12, 15, 17, 18}		3 		sum(3, 3, 4, 4, 4, 2, 2, 2)		= 24 	72 		
+2 		{5, 10, 13}							10		sum(6, 4, 6)					= 16    160
+3 		{4, 7, 8, 12, 15, 16, 18}			3 		sum(3, 4, 4, 4, 2, 2, 2)		= 21 	63
+4 		{7, 8, 11, 15, 16, 17}				3 		sum(4, 4, 4, 2, 2, 2)			= 18 	54
+5 		{6, 9, 14}							6 		sum(4, 1, 4)					= 9 	54
+6 		{10, 13}							4 		sum(4, 6)						= 10 	40
+7 		{8, 11, 12, 16, 17, 18}				4 		sum(4, 4, 4, 2, 2, 2)			= 18 	72
+8 		{11, 12, 15, 17, 18}				4 		sum(4, 4, 2, 2, 2)				= 14 	56
+9 		{10, 13}							1 		sum(4, 6)						= 10 	10
+10 		{14}								4 		sum(4)							= 4 	16
+11 		{12, 15, 16, 18}					4 		sum(4, 2, 2, 2)					= 10 	40
+12 		{15, 16, 17}						4 		sum(2, 2, 2)					= 6 	24
+13 		{14}								6 		sum(4)							= 4 	24
+14 		{}									4 		sum(0)							= 0 	0
+15 		{16, 17, 18}						2 		sum(2, 2, 2)					= 6 	12
+16 		{17, 18}							2 		sum(2, 2)						= 4 	8
+17 		{18}								2 		sum(2)							= 2 	4
+18 		{} 									2 		sum()							= 0 	0
+
+total
+= sum(54, 72, 160, 63, 54, 54, 40, 72, 56, 10, 16, 40, 24, 24, 12, 8, 4)
+= 763

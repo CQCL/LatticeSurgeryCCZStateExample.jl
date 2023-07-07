@@ -350,6 +350,39 @@ xz_on_set(xs, zs) = x_on_set(xs) * z_on_set(zs)
 # --------------------- Circuit Construction ------------------------ #
 
 """
+`d_2_repetition_code_circuit()`
+
+In order to test the fault-counting function, we need a circuit with
+few enough gates that we can count the faults 'by hand' (though I've
+done as much as I can to classify the faults into equivalent sets in
+order to limit the amount of arithmetic). We do this in an
+accompanying file, `manual_fault_count.txt`.  
+"""
+function d_2_repetition_code_circuit()
+	tag = "rep_code"
+	anc = (5, 5)
+	gates = vcat(down_zz_meas(tag, anc, 1), down_zz_meas(tag, anc, 2))
+	stabs = [down_zz_stab(anc)]
+	default_fault = Fault(identity_pauli(nq), 1, 0)
+	log_ops = ([z_on((4, 4))], [x_on_set([(4, 4), (6, 4)])])
+
+	function log_meas_res(comp_state::ComputationalState)
+		Dict{String, UInt8}()
+	end
+
+	function postselect(comp_state::ComputationalState, log_results)
+		false
+	end
+
+	function log_corrections(comp_state, log_results)
+		comp_state
+	end
+
+	Circuit([Layer(gates, stabs)], default_fault, stabs, log_ops,
+				log_meas_res, postselect, log_corrections)
+end
+
+"""
 `single_memory_circuit()`
 
 For testing and profiling purposes, we do a single memory gadget for
@@ -1414,6 +1447,14 @@ function faulty_circuits(circuit)
 	map(fault -> add_fault(circuit, fault), faults)
 end
 
+"""
+Iterator over circuits with a single fault only on a gate (gets around
+having to figure out which qubits in a circuit start as open wires).
+"""
+function circuits_with_faulty_gates(circuit)
+	map(fault -> add_fault(circuit, fault), gate_faults(circuit))
+end
+
 function paulis_on(nq, qubit::Int64)
 	[QC.single_z(nq, qubit),
 	QC.single_x(nq, qubit),
@@ -1453,23 +1494,30 @@ function fault_set(dx_layer::Tuple{Int, Layer})
 	reduce(vcat, map(f_set, 1:length(glist)))
 end
 
+"""
+only one kind of fault is possible after a preparation
+"""
+function flip_pauli(prep_meas::Union{Preparation, Measurement})
+	q = qubits(prep_meas)[1]
+	if prep_meas.pauli[q] == (false, true)
+		pauli = QC.single_x(nq, q)
+	elseif prep_meas.pauli[q] == (true, false)
+		pauli = QC.single_z(nq, q)
+	else 
+		pauli = QC.single_x(nq, q)
+	end
+
+	return pauli
+end
+
 function fault_set(dx_dx_meas::Tuple{Int, Int, Measurement})
 	layer_dx, gate_dx, meas = dx_dx_meas
-	map(pauli -> Fault(pauli, layer_dx, gate_dx-1), paulis_on(nq, qubits(meas)))
+	[Fault(flip_pauli(meas), layer_dx, gate_dx-1)]
 end
 
 function fault_set(dx_dx_prep::Tuple{Int, Int, Preparation})
 	layer_dx, gate_dx, prep = dx_dx_prep
-	q = qubits(prep)[1]
-
-	# only one kind of fault is possible after a preparation
-	if prep.pauli[q] == (false, true)
-		flip_pauli = QC.single_x(nq, q)
-	elseif prep.pauli[q] == (true, false)
-		flip_pauli = QC.single_z(nq, q)
-	end
-
-	[Fault(flip_pauli, layer_dx, gate_dx)]
+	[Fault(flip_pauli(prep), layer_dx, gate_dx)]
 end
 
 function fault_set(dx_dx_gate::Tuple{Int, Int, Any})
@@ -1573,6 +1621,24 @@ function malicious_fault_pairs(circuit)
 	# 		end
 	# 	end
 	# end
+	PM.@showprogress for pair in IT.subsets(single_fault_states, 2)
+		if contains_logical_error(circuit, combine(pair[1], pair[2]))
+			n_malicious_pairs += 1
+		end
+	end
+
+	n_malicious_pairs
+end
+
+"""
+Same as `malicious_fault_pairs`, but doesn't include input faults, for
+simplicity.
+"""
+function malicious_gate_fault_pairs(circuit)
+	single_fault_states = map(run, circuits_with_faulty_gates(circuit))
+	
+	n_malicious_pairs = 0
+	n_states = length(single_fault_states)
 	PM.@showprogress for pair in IT.subsets(single_fault_states, 2)
 		if contains_logical_error(circuit, combine(pair[1], pair[2]))
 			n_malicious_pairs += 1

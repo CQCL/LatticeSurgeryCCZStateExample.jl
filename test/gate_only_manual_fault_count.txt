@@ -1,0 +1,185 @@
+Manual fault counting
+
+To test the fault pair counting code, I'm counting fault pairs for a small circuit by hand.
+This version doesn't include input faults.
+
+qubits 0 1 2
+
+0 z_prep 1
+1 cnot 0 1
+2 cnot 2 1
+3 z_meas 1
+
+4 z_prep 1
+5 cnot 0 1
+6 cnot 2 1
+7 z_meas 1
+
+gate 0:
+dx	fault		syndrome		pauli
+0	X 			10 				II
+
+gate 1:
+dx	fault		syndrome		pauli
+0	IX 			10 				II
+1	IY 			10 				IZ
+2	IZ 			00 				IZ
+3	XI 			01 				XI
+4	XX 			11 				XI
+5	XY 			11 				XZ
+6	XZ 			01 				XZ
+7	YI 			01 				YI
+8	YX 			11 				YI
+9	YY 			11 				YZ
+10	YZ 			01 				YZ
+11	ZI 			00 				ZI
+12	ZX 			10 				ZI
+13	ZY 			10 				ZZ
+14	ZZ 			00 				ZZ
+
+gate 2:
+dx	fault		syndrome		pauli
+0	IX 			01 				IX
+1	IY 			01 				IY
+2	IZ 			00 				IZ
+3	XI 			10 				II
+4	XX 			11 				IX
+5	XY 			11 				IY
+6	XZ 			10 				IZ
+7	YI 			10 				II
+8	YX 			11 				IX
+9	YY 			11 				IY
+10	YZ 			10 				IZ
+11	ZI 			00 				II
+12	ZX 			01 				IX
+13	ZY 			01 				IY
+14	ZZ 			00 				IZ
+
+gate 3:
+dx	fault		syndrome		pauli
+0	X 			10 				II
+
+gate 4:
+dx	fault		syndrome		pauli
+0	X 			01 				II
+
+gate 5:
+dx	fault		syndrome		pauli
+0	IX 			01 				II
+1	IY 			01 				IZ
+2	IZ 			00 				IZ
+3	XI 			00 				XI
+4	XX 			01 				XI
+5	XY 			01 				XZ
+6	XZ 			00 				XZ
+7	YI 			00 				YI
+8	YX 			01 				YI
+9	YY 			01 				YZ
+10	YZ 			00 				YZ
+11	ZI 			00 				ZI
+12	ZX 			01 				ZI
+13	ZY 			01 				ZZ
+14	ZZ 			00 				ZZ
+
+gate 6:
+dx	fault		syndrome		pauli
+0	IX 			00 				IX
+1	IY 			00 				IY
+2	IZ 			00 				IZ
+3	XI 			01 				II
+4	XX 			01 				IX
+5	XY 			01 				IY
+6	XZ 			01 				IZ
+7	YI 			01 				II
+8	YX 			01 				IX
+9	YY 			01 				IY
+10	YZ 			01 				IZ
+11	ZI 			00 				II
+12	ZX 			00 				IX
+13	ZY 			00 				IY
+14	ZZ 			00 				IZ
+
+gate 7:
+dx	fault		syndrome		pauli
+0	X 			01 				II
+
+There are 64 faults here, and I'm not about to manually count 2016 possible pairs. 
+Let's see how many faults are equivalent up to stabilizers of the circuit code, so we can reduce the count.
+
+set_dx	syndrome 	pauli 	anticommutes?	logical			(gate_dx, fault_dx)
+0		11			XI / YZ		1			X				{(1, 4), (1, 9)}
+1		11			YI / XZ		1			Y				{(1, 5), (1, 8)}
+2		00			ZI / IZ		0			Z				{(1, 2), (1, 11), (2, 2), (2, 14), (5, 2), (5, 11), (6, 2), (6, 14)}
+3		11 			IX / ZY		1			I				{(2, 4), (2, 8)}
+4		11			IY / ZX		1			Z				{(2, 5), (2, 9)}
+5		10 			II / ZZ		0			I				{(0, 0), (1, 0), (1, 13), (2, 3), (2, 7), (3, 0)}
+6		10 			IZ / ZI		0			Z				{(1, 1), (1, 12), (2, 6), (2, 10)}
+7		01			XI / YZ		1			X				{(1, 3), (1, 10), (5, 4), (5, 9)}
+8		01 			YI / XZ		1			Y				{(1, 6), (1, 7), (5, 5), (5, 8)}
+9		00			II / ZZ		0			I				{(1, 14), (2, 11), (5, 14), (6, 11)}
+10		01 			IX / ZY		1			I				{(2, 0), (2, 12), (6, 4), (6, 8)}
+11		01 			IY / ZX		1			Z				{(2, 1), (2, 13), (6, 5), (6, 9)}
+12		01 			II / ZZ		0			I				{(4, 0), (3, 0), (5, 13), (6, 3), (6, 7), (7, 0)}
+13		01 			IZ / ZI		0			Z				{(5, 1), (5, 12), (6, 6), (6, 10)}
+14		00 			XI / YZ		1			X				{(5, 3), (5, 10)}
+15		00 			YI / XZ		1			Y				{(5, 6), (5, 7)}
+16		00 			IX / ZY		1			I				{(6, 0), (6, 12)}
+17		00			IY / ZX		1			Z				{(6, 1), (6, 13)}
+
+So there are 18 sets of equivalent faults. 
+A pair of faults from two distinct sets will be malicious iff they cause the same syndrome in a subsequent perfect round and are equivalent to different logical operators under application of the relevant pure error.
+Note that we assume that no postselection on the syndrome takes place.  
+
+For each set, members of the following partner sets create malicious pairs:
+
+set_dx 	partners							size 	partner_size							product
+0 		{1, 3, 4, 8, 10, 11, 15, 16, 17}	2 		sum(2, 2, 2, 4, 4, 4, 2, 2, 2)	= 24 	48
+1 		{3, 4, 7, 10, 11, 14, 16, 17}		2 		sum(2, 2, 4, 4, 4, 2, 2, 2)		= 22 	44 		
+2 		{5, 9, 12}							8		sum(6, 4, 6)					= 16    128
+3 		{4, 7, 8, 11, 14, 15, 17}			2 		sum(2, 4, 4, 4, 2, 2, 2)		= 20 	40
+4 		{7, 8, 10, 14, 15, 16}				2 		sum(4, 4, 4, 2, 2, 2)			= 18 	36
+5 		{6, 13}								6 		sum(4, 4)						= 8 	48
+6 		{9, 12}								4 		sum(4, 6)						= 10 	40
+7 		{8, 10, 11, 15, 16, 17}				4 		sum(4, 4, 4, 2, 2, 2)			= 18 	72
+8 		{10, 11, 14, 16, 17}				4 		sum(4, 4, 2, 2, 2)				= 14 	56
+9 		{13}								4 		sum(4)							= 4 	16
+10 		{11, 14, 15, 17}					4 		sum(4, 2, 2, 2)					= 10 	40
+11 		{14, 15, 16}						4 		sum(2, 2, 2)					= 6 	24
+12 		{13}								6 		sum(4)							= 4 	24
+13 		{}									4 		sum(0)							= 0 	0
+14 		{16, 17, 18}						2 		sum(2, 2, 2)					= 6 	12
+15 		{17, 18}							2 		sum(2, 2)						= 4 	8
+16 		{18}								2 		sum(2)							= 2 	4
+17 		{} 									2 		sum()							= 0 	0
+
+total
+= sum(48, 44, 128, 40, 36, 48, 40, 72, 56, 16, 40, 24, 24, 12, 8, 4)
+= 640
+
+Now, we should also check what would happen if we did some nontrivial postprocessing. 
+Let's imagine that we reject any time we see any syndrome.
+We then need the two errors in a pair to have the same syndrome in order to form a malicious pair:
+
+set_dx 	partners		size	partner size 			product
+0 		{1, 3, 4}		2		sum(2, 2, 2)	= 6		12
+1 		{3, 4}			2		sum(2, 2) 		= 4		8
+2 		{9}				8		sum(4) 			= 4		32
+3 		{4} 			2		sum(2)			= 2		4
+4 		{} 				2		sum()			= 0		0
+5 		{6} 			6		sum(4)			= 4		24
+6 		{}				4		sum()			= 0		0
+7 		{8, 10, 11}		4		sum(4, 4, 4)	= 12	48	
+8 		{10, 11}		4		sum(4, 4)		= 8 	32	
+9 		{}				4		sum()			= 0		0
+10 		{11}			4		sum(4)			= 4		16
+11		{}				4		sum()			= 0		0
+12 		{13}			6		sum(4)			= 4		24
+13 		{}				4		sum()			= 0		0
+14 		{15, 16, 17}	2		sum(2, 2, 2)	= 6		12
+15 		{16, 17}		2		sum(2, 2)		= 4 	8	
+16 		{17}			2		sum(2)			= 2		4
+17 		{}				2 		sum()			= 0 	0
+
+total
+ = sum(12, 8, 32, 4, 24, 48, 32, 16, 24, 12, 8, 4)
+ = 224
