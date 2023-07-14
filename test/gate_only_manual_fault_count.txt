@@ -16,92 +16,92 @@ qubits 0 1 2
 7 z_meas 1
 
 gate 0:
-dx	fault		syndrome		pauli
-0	X 			10 				II
+dx	fault		syndrome		pauli   set label
+0	X 			10 				II      100I
 
 gate 1:
-dx	fault		syndrome		pauli
-0	IX 			10 				II
-1	IY 			10 				IZ
-2	IZ 			00 				IZ
-3	XI 			01 				XI
-4	XX 			11 				XI
-5	XY 			11 				XZ
-6	XZ 			01 				XZ
-7	YI 			01 				YI
-8	YX 			11 				YI
-9	YY 			11 				YZ
-10	YZ 			01 				YZ
-11	ZI 			00 				ZI
-12	ZX 			10 				ZI
-13	ZY 			10 				ZZ
-14	ZZ 			00 				ZZ
+dx	fault		syndrome		pauli   set label
+0	IX 			10 				II      100I
+1	IY 			10 				IZ      100Z
+2	IZ 			00 				IZ      000Z
+3	XI 			01 				XI      011X
+4	XX 			11 				XI      111X
+5	XY 			11 				XZ      111Y
+6	XZ 			01 				XZ      011Y
+7	YI 			01 				YI      011Y
+8	YX 			11 				YI      111Y
+9	YY 			11 				YZ      111X
+10	YZ 			01 				YZ      011X
+11	ZI 			00 				ZI      000Z
+12	ZX 			10 				ZI      100Z
+13	ZY 			10 				ZZ      100I
+14	ZZ 			00 				ZZ      000I
 
 gate 2:
-dx	fault		syndrome		pauli
-0	IX 			01 				IX
-1	IY 			01 				IY
-2	IZ 			00 				IZ
-3	XI 			10 				II
-4	XX 			11 				IX
-5	XY 			11 				IY
-6	XZ 			10 				IZ
-7	YI 			10 				II
-8	YX 			11 				IX
-9	YY 			11 				IY
-10	YZ 			10 				IZ
-11	ZI 			00 				II
-12	ZX 			01 				IX
-13	ZY 			01 				IY
-14	ZZ 			00 				IZ
+dx	fault		syndrome		pauli   set label
+0	IX 			01 				IX      011I
+1	IY 			01 				IY      011Z
+2	IZ 			00 				IZ      000Z
+3	XI 			10 				II      100I
+4	XX 			11 				IX      111I
+5	XY 			11 				IY      111Z
+6	XZ 			10 				IZ      100Z
+7	YI 			10 				II      100I
+8	YX 			11 				IX      111I
+9	YY 			11 				IY      111Z
+10	YZ 			10 				IZ      100Z
+11	ZI 			00 				II      000I
+12	ZX 			01 				IX      011I
+13	ZY 			01 				IY      011Z
+14	ZZ 			00 				IZ      000Z
 
 gate 3:
-dx	fault		syndrome		pauli
-0	X 			10 				II
+dx	fault		syndrome		pauli   set label
+0	X 			10 				II      100I
 
 gate 4:
-dx	fault		syndrome		pauli
-0	X 			01 				II
+dx	fault		syndrome		pauli   set label
+0	X 			01 				II      010I
 
 gate 5:
-dx	fault		syndrome		pauli
-0	IX 			01 				II
-1	IY 			01 				IZ
-2	IZ 			00 				IZ
-3	XI 			00 				XI
-4	XX 			01 				XI
-5	XY 			01 				XZ
-6	XZ 			00 				XZ
-7	YI 			00 				YI
-8	YX 			01 				YI
-9	YY 			01 				YZ
-10	YZ 			00 				YZ
-11	ZI 			00 				ZI
-12	ZX 			01 				ZI
-13	ZY 			01 				ZZ
-14	ZZ 			00 				ZZ
+dx	fault		syndrome		pauli   set label
+0	IX 			01 				II      010I
+1	IY 			01 				IZ      010Z
+2	IZ 			00 				IZ      000Z
+3	XI 			00 				XI      001X
+4	XX 			01 				XI      011X
+5	XY 			01 				XZ      011Y
+6	XZ 			00 				XZ      001Y
+7	YI 			00 				YI      001Y
+8	YX 			01 				YI      011Y
+9	YY 			01 				YZ      011X
+10	YZ 			00 				YZ      001X
+11	ZI 			00 				ZI      000Z
+12	ZX 			01 				ZI      010Z
+13	ZY 			01 				ZZ      010I
+14	ZZ 			00 				ZZ      000I
 
 gate 6:
-dx	fault		syndrome		pauli
-0	IX 			00 				IX
-1	IY 			00 				IY
-2	IZ 			00 				IZ
-3	XI 			01 				II
-4	XX 			01 				IX
-5	XY 			01 				IY
-6	XZ 			01 				IZ
-7	YI 			01 				II
-8	YX 			01 				IX
-9	YY 			01 				IY
-10	YZ 			01 				IZ
-11	ZI 			00 				II
-12	ZX 			00 				IX
-13	ZY 			00 				IY
-14	ZZ 			00 				IZ
+dx	fault		syndrome		pauli   set label
+0	IX 			00 				IX      001I
+1	IY 			00 				IY      001Z
+2	IZ 			00 				IZ      000Z
+3	XI 			01 				II      010I
+4	XX 			01 				IX      011I
+5	XY 			01 				IY      011Z
+6	XZ 			01 				IZ      010Z
+7	YI 			01 				II      010I
+8	YX 			01 				IX      011I
+9	YY 			01 				IY      011Z
+10	YZ 			01 				IZ      010Z
+11	ZI 			00 				II      000I
+12	ZX 			00 				IX      001I
+13	ZY 			00 				IY      001Z
+14	ZZ 			00 				IZ      000Z
 
 gate 7:
-dx	fault		syndrome		pauli
-0	X 			01 				II
+dx	fault		syndrome		pauli   set label
+0	X 			01 				II      010I
 
 There are 64 faults here, and I'm not about to manually count 2016 possible pairs. 
 Let's see how many faults are equivalent up to stabilizers of the circuit code, so we can reduce the count.
@@ -127,7 +127,7 @@ set_dx	syndrome 	pauli 	anticommutes?	logical			(gate_dx, fault_dx)
 17		00			IY / ZX		1			Z				{(6, 1), (6, 13)}
 
 So there are 18 sets of equivalent faults. 
-A pair of faults from two distinct sets will be malicious iff they cause the same syndrome in a subsequent perfect round and are equivalent to different logical operators under application of the relevant pure error.
+A pair of faults from two distinct sets will be malicious iff they cause the same syndrome in a subsequent perfect round and are equivalent to different logical operators under application of the relevant pure error (IX).
 Note that we assume that no postselection on the syndrome takes place.  
 
 For each set, members of the following partner sets create malicious pairs:
@@ -160,26 +160,27 @@ Now, we should also check what would happen if we did some nontrivial postproces
 Let's imagine that we reject any time we see any syndrome.
 We then need the two errors in a pair to have the same syndrome in order to form a malicious pair:
 
-set_dx 	partners		size	partner size 			product
-0 		{1, 3, 4}		2		sum(2, 2, 2)	= 6		12
-1 		{3, 4}			2		sum(2, 2) 		= 4		8
-2 		{9}				8		sum(4) 			= 4		32
-3 		{4} 			2		sum(2)			= 2		4
-4 		{} 				2		sum()			= 0		0
-5 		{6} 			6		sum(4)			= 4		24
-6 		{}				4		sum()			= 0		0
-7 		{8, 10, 11}		4		sum(4, 4, 4)	= 12	48	
-8 		{10, 11}		4		sum(4, 4)		= 8 	32	
-9 		{}				4		sum()			= 0		0
-10 		{11}			4		sum(4)			= 4		16
-11		{}				4		sum()			= 0		0
-12 		{13}			6		sum(4)			= 4		24
-13 		{}				4		sum()			= 0		0
-14 		{15, 16, 17}	2		sum(2, 2, 2)	= 6		12
-15 		{16, 17}		2		sum(2, 2)		= 4 	8	
-16 		{17}			2		sum(2)			= 2		4
-17 		{}				2 		sum()			= 0 	0
+set label 	size	partners	          partner size 			product
+000I        4       {000Z}                sum(8)        =8      32
+000Z        8       {}                                  =0      0
+001I        2       {001X, 001Y, 001Z}    sum(2, 2, 2)  =6      12
+001X        2       {001Y, 001Z}          sum(2, 2)     =4      8
+001Y        2       {001Z}                sum(2)        =2      4
+001Z        2       {}                                  =0      0
+010I        6       {010Z}                sum(4)        =4      24
+010Z        4       {}                                  =0      0
+011I        4       {011X, 011Y, 011Z}    sum(4, 4, 4)  =12     48
+011X        4       {011Y, 011Z}          sum(4, 4)     =8      32
+011Y        4       {011Z}                sum(4)        =4      16
+011Z        4       {}                                  =0      0
+100I        6       {100Z}                sum(4)        =4      24
+100Z        4       {}                                  =0      0
+111I        2       {111X, 111Y, 111Z}    sum(2, 2, 2)  =6      12
+111X        2       {111Y, 111Z}          sum(2, 2)     =4      8
+111Y        2       {111Z}                sum(2)        =2      4
+111Z        2       {}                                  =0      0
+
 
 total
- = sum(12, 8, 32, 4, 24, 48, 32, 16, 24, 12, 8, 4)
+ = sum(32, 12, 8, 4, 24, 48, 32, 16, 24, 12, 8, 4)
  = 224

@@ -383,6 +383,36 @@ function d_2_repetition_code_circuit()
 end
 
 """
+`postselected_d_2_repetition_code_circuit()`
+
+In this version of the repetition code circuit, we postselect on any
+non-zero syndrome. 
+"""
+function postselected_d_2_repetition_code_circuit()
+	tag = "rep_code"
+	anc = (5, 5)
+	gates = vcat(down_zz_meas(tag, anc, 1), down_zz_meas(tag, anc, 2))
+	stabs = [down_zz_stab(anc)]
+	default_fault = Fault(identity_pauli(nq), 1, 0)
+	log_ops = ([z_on((4, 4))], [x_on_set([(4, 4), (6, 4)])])
+
+	function log_meas_res(comp_state::ComputationalState)
+		Dict{String, UInt8}()
+	end
+
+	function postselect(comp_state::ComputationalState, log_results)
+		any(val == 0x01 for val in values(comp_state.meas_output))
+	end
+
+	function log_corrections(comp_state, log_results)
+		comp_state
+	end
+
+	Circuit([Layer(gates, stabs)], default_fault, stabs, log_ops,
+				log_meas_res, postselect, log_corrections)
+end
+
+"""
 `single_memory_circuit()`
 
 For testing and profiling purposes, we do a single memory gadget for
@@ -1589,9 +1619,9 @@ function is_d_2_fault_tolerant(circuit)
 end
 
 function combine(state_1::ComputationalState, state_2::ComputationalState)
-	new_pauli = state_1.pauli * state_2.pauli
+	new_pauli = deepcopy(state_1.pauli) * deepcopy(state_2.pauli)
 	
-	new_output = state_1.meas_output
+	new_output = deepcopy(state_1.meas_output)
 	output_2 = state_2.meas_output
 	for key in keys(new_output)
 		new_output[key] = xor(new_output[key], output_2[key])
@@ -1638,7 +1668,6 @@ function malicious_gate_fault_pairs(circuit)
 	single_fault_states = map(run, circuits_with_faulty_gates(circuit))
 	
 	n_malicious_pairs = 0
-	n_states = length(single_fault_states)
 	PM.@showprogress for pair in IT.subsets(single_fault_states, 2)
 		if contains_logical_error(circuit, combine(pair[1], pair[2]))
 			n_malicious_pairs += 1

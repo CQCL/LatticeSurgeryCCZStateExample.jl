@@ -402,7 +402,32 @@ end
     @test combined_state == comp_state_12
 end
 
+"""
+As of 14 July 2022, there are 8 missing fault pairs in the
+postselected d = 2 repetition code circuit. 
+In order to find out which ones, I'm going to print out the
+computational states that partner with a given state to form a
+malicious pair.  
+"""
+function print_malicious_partners(f_dx)
+    circuit = LS.postselected_d_2_repetition_code_circuit()
+    f_circs = LS.circuits_with_faulty_gates(circuit)
+    single_fault_states = map(LS.run, f_circs)
+    test_state = single_fault_states[f_dx]
+
+    display(test_state)
+    for o_dx = f_dx + 1 : length(f_circs)
+        other_state = single_fault_states[o_dx]
+        if LS.contains_logical_error(circuit, LS.combine(test_state, other_state))
+            display(o_dx)
+            display(other_state)
+            display(LS.combine(test_state, other_state))
+        end
+    end
+end
+
 @testset "Malicious fault pair counting" begin
     # Calculation in a neighbouring file, `gate_only_manual_fault_count.txt`
     @test LS.malicious_gate_fault_pairs(LS.d_2_repetition_code_circuit()) == 640
+    @test LS.malicious_gate_fault_pairs(LS.postselected_d_2_repetition_code_circuit()) == 224
 end
