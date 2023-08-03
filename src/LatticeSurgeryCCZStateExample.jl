@@ -1331,7 +1331,7 @@ function is_postselected(comp_state::ComputationalState, log_results)
 		vcat(map(nms(tag, "xxx"), [(5, 5), (5, 21)])...),
 		vcat(map(nms(tag, "down_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), (1, 23)])...),
 		vcat(map(nms(tag, "up_xx"), [(1, 3), (1, 7), (1, 11), (1, 15), (1, 19)])...),
-		vcat(map(nms(tag, "zzzz"), [(1, 5), (1, 9), (1, 13), (1, 17), (1, 21)]))...
+		vcat(map(nms(tag, "zzzz"), [(1, 5), (1, 9), (1, 13), (1, 17), (1, 21)])...)
 		)
 		
 	tag = "x_abcdefgh"
@@ -1345,7 +1345,6 @@ function is_postselected(comp_state::ComputationalState, log_results)
 	tag = "x_3_x_aceg"
 	x_3_x_aceg_names = vcat(
 		vcat(map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)])...),
-		vcat(map(nms(tag, "xxx"), [(5, 5)])...),
 		vcat(map(nms(tag, "xxx"), [(5, 5)])...),
 		vcat(map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
 			(9, 3), (9, 7), (9, 11), (9, 15), (9, 19)])...),
@@ -1369,8 +1368,9 @@ function is_postselected(comp_state::ComputationalState, log_results)
 	data_name = coord -> measurement_name("s_x_meas", "x", coord, 3)
 	centers = [(1, 9), (1, 13), (1, 17), (1, 21),
 					(9, 9), (9, 13), (9, 17), (9, 21)]
-	weight_one_stab_names = map(data_name,
-								[ctr .+ (1, 1) for ctr in centers])
+	
+	# weight_one_stab_names = map(data_name,
+	# 							[ctr .+ (1, 1) for ctr in centers])
 
 	weight_two_stab_sets = [map(data_name, 
 								[ctr .+ (1, -1), ctr .+ (-1, -1)])
@@ -1438,31 +1438,34 @@ function output_stabilizers()
 end
 
 function do_logical_corrections(comp_state::ComputationalState, log_results)
-	Z, X = logical_operators
+	Z, X = logical_operators()
 
+	# s_x_meas_x_h has no effect on logical corrections, only
+	# post-selection
 	log_keys = ["s_x_meas_x_a", "s_x_meas_x_b", "s_x_meas_x_c",
 				"s_x_meas_x_d", "s_x_meas_x_e", "s_x_meas_x_f",
-				"s_x_meas_x_g", "s_x_meas_x_h",
+				"s_x_meas_x_g",
 				"x_1_x_abcd", "x_2_x_abef", "x_3_x_aceg"]
 	
-	log_ops = [Z[1] * Z[2] * Z[3],
-				Z[1] * Z[2],
-				Z[1] * Z[3],
-				Z[1],
-				Z[2] * Z[3],
-				Z[2],
-				Z[3],
+	log_ops = [Z[1] * Z[2] * Z[3], Z[1] * Z[2], Z[1] * Z[3],
+				Z[1], Z[2] * Z[3], Z[2],
+				Z[3], 
 				Z[1], Z[2], Z[3]]
 	
+	new_pauli = deepcopy(comp_state.pauli)
+
 	for (key, log) in zip(log_keys, log_ops)
 		if log_results[key] == 0x01
-			comp_state.pauli *= log
+			new_pauli *= log
 		end
 	end
 
-	comp_state.pauli *= X[1] * X[2] * X[3]
+	# Note: a quick check in Quirk reveals that this correction is not
+	# necessary, because we're preparing the state |+++>, using
+	# transversal S instead of T
+	# new_pauli *= X[1] * X[2] * X[3]
 
-	comp_state
+	ComputationalState(new_pauli, comp_state.meas_output)
 end
 
 # ----------------------- Circuit Analysis -------------------------- #
@@ -1560,6 +1563,8 @@ function is_logical(circuit, pauli)
 	stabs = circuit.final_stabs
 	logs = vcat(circuit.log_ops...)
 
+	# if it could be detected by a subsequent perfect round, it's not a
+	# logical error.
 	for stab in stabs
 		if QC.comm(stab, pauli) == 0x01
 			return false
@@ -1577,6 +1582,7 @@ end
 
 function contains_logical_error(circuit, state)
 	results = circuit.log_meas_res(state)
+	state = circuit.log_corrections(state, results)
 	~circuit.postselect(state, results) && is_logical(circuit, state.pauli)
 end
 
@@ -1635,6 +1641,9 @@ Obtains results (measurement record and Pauli) from runs of a circuit
 with one fault, then takes pairs of those outputs and XORs the
 measurement results and multiplies the Paulis to see whether the final
 effect of both faults will be a logical that's not post-selected out.  
+
+Note: As of 17 July 2023:
+malicious_fault_pairs(lattice_surgery_circuit()) == 5926 
 """
 function malicious_fault_pairs(circuit)
 	faulty_circs = faulty_circuits(circuit)

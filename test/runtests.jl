@@ -1,8 +1,11 @@
+import IterTools as IT
 import LatticeSurgeryCCZStateExample as LS
+import QuantumClifford as QC
+
 using Test
 
 function basic_circuit_components()
-    tag = "mem"
+   tag = "mem"
 
     test_gates = vcat(LS.zzzz_meas(tag, (1, 3), 1),
         LS.down_xx_meas(tag, (1, 5), 1),
@@ -380,6 +383,10 @@ end
     end
 end
 
+@testset "Is any single syndrome postselected out?" begin
+    
+end
+
 @testset "Is d = 2 fault tolerance correctly diagnosed?" begin
     @test LS.is_d_2_fault_tolerant(LS.single_memory_circuit())
     @test !LS.is_d_2_fault_tolerant(LS.d_2_repetition_code_circuit())
@@ -398,17 +405,14 @@ end
     comp_state_2 = LS.run(LS.add_fault(circuit, fault_2))
     comp_state_12 = LS.run(LS.add_fault(circuit, fault_12))
 
+    state_1_copy = deepcopy(comp_state_1)
+    state_2_copy = deepcopy(comp_state_2)
     combined_state = LS.combine(comp_state_1, comp_state_2)
     @test combined_state == comp_state_12
+    @test comp_state_1 == state_1_copy
+    @test comp_state_2 == state_2_copy
 end
 
-"""
-As of 14 July 2022, there are 8 missing fault pairs in the
-postselected d = 2 repetition code circuit. 
-In order to find out which ones, I'm going to print out the
-computational states that partner with a given state to form a
-malicious pair.  
-"""
 function print_malicious_partners(f_dx)
     circuit = LS.postselected_d_2_repetition_code_circuit()
     f_circs = LS.circuits_with_faulty_gates(circuit)
@@ -430,4 +434,130 @@ end
     # Calculation in a neighbouring file, `gate_only_manual_fault_count.txt`
     @test LS.malicious_gate_fault_pairs(LS.d_2_repetition_code_circuit()) == 640
     @test LS.malicious_gate_fault_pairs(LS.postselected_d_2_repetition_code_circuit()) == 224
+end
+
+"""
+To show that everything works as we think it should, we count two-qubit
+gates in circuits.
+"""
+function n_two_qubit_gates(layer::LS.Layer)
+end
+
+
+@testset "Does the lattice surgery circuit have the right number of gates?" begin
+    #=
+    It's easier to test subcircuits, and gives us more confidence anyway.
+    =#
+    
+
+end
+
+"""
+In order to hand count fault sets from the lattice surgery circuit, 
+we need to classify them based on their syndromes.
+"""
+function meas_ones(meas_output)
+    [key for (key, val) in filter(p -> last(p) == 0x01, meas_output)]
+end
+
+"""
+The idea here is to get the coset of a Pauli for the final three
+logical qubits, without caring whether the error is detectable or not.
+"""
+function logical_coset(pauli)
+    # We'll need the logicals of the final three qubits:
+    Z, X = LS.logical_operators()
+    ltrs = ['I', 'I', 'I']
+    for dx in 1:3
+        has_x = Bool(QC.comm(pauli, Z[dx]))
+        has_z = Bool(QC.comm(pauli, X[dx]))
+        if has_x
+            ltr = has_z ? 'Y' : 'X'
+        else
+            ltr = has_z ? 'Z' : 'I'
+        end
+        ltrs[dx] = ltr
+    end
+    String(ltrs)
+end
+
+"""
+Just to keep things a bit clean, I'm constructing the fake states
+to feed into postselection here. 
+"""
+function would_be_postselected(class, other_class)
+    wuns = class[1][1]
+    other_wuns = other_class[1][1]
+    combined_wuns = symdiff(wuns, other_wuns)
+    circuit = LS.lattice_surgery_circuit()
+    fake_state = LS.ComputationalState(circuit)
+    for wun in combined_wuns
+        fake_state.meas_output[wun] = 0x01
+    end
+    results = circuit.log_meas_res(fake_state)
+    fake_state = circuit.log_corrections(fake_state, results)
+
+    circuit.postselect(fake_state, results)
+end
+
+@testset "Classified and counted subset of lattice surgery error pairs" begin
+    circuit = LS.lattice_surgery_circuit()
+
+    # a few hand-picked indices with a large fraction of malicious
+    # pairs
+    dxs = [5, 6, 8, 9, 11, 12, 14, 15, 287, 290, 293, 296, 311, 314,
+            317, 320, 333, 334, 337, 338, 341, 342, 345, 346, 348, 349,
+            352, 353, 356, 357, 360, 361, 363, 364, 367, 368, 371, 372,
+            375, 376, 378, 379, 382, 383, 386, 387, 390, 391, 923, 928,
+            929, 934, 944, 946, 949, 951]
+
+    faulty_circs = LS.faulty_circuits(circuit)[dxs]
+
+    single_fault_states = map(LS.run, faulty_circs)
+    n_malicious_pairs = 0
+    n_states = length(single_fault_states)
+    for pr in IT.subsets(1:n_states, 2)
+        pair = single_fault_states[pr[1]], single_fault_states[pr[2]]
+        if LS.contains_logical_error(circuit, LS.combine(pair[1], pair[2]))
+            n_malicious_pairs += 1
+        end
+    end
+
+    classifiable_states = deepcopy(single_fault_states)
+    classes = Dict{Tuple{Vector{String}, String, String}, Int}()
+    for dx = 1 : n_states
+        state = classifiable_states[dx]
+        results = circuit.log_meas_res(state)
+        state = circuit.log_corrections(state, results)
+        classifiable_states[dx] = state
+        
+        meas_label = meas_ones(state.meas_output)
+        pure_error = string(map(stab -> QC.comm(stab, state.pauli),
+                                            circuit.final_stabs)...)
+        coset = logical_coset(state.pauli)
+        key = (meas_label, pure_error, coset)
+        if haskey(classes, key)
+            classes[key] += 1
+        else 
+            classes[key] = 1
+        end
+    end
+    classes = collect(classes)
+
+    n_counted_pairs = 0
+    for class_dx = 1 : length(classes)
+        class = classes[class_dx]
+        key, count = class
+        for other_dx = class_dx + 1 : length(classes)
+            other_class = classes[other_dx]
+            other_key, other_count = other_class
+            if !(would_be_postselected(class, other_class))
+                if (key[2] == other_key[2]) && !(key[3] == other_key[3])
+                    n_counted_pairs += count * other_count
+                end
+            end
+        end
+    end
+
+    @test n_malicious_pairs == n_counted_pairs
 end
