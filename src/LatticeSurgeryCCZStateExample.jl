@@ -799,9 +799,8 @@ end
 
 function x_1_x_abcd_meas()
 	ancs = x_1_x_abcd_ancs()
-
-	tag = "x_1_x_abcd"
-	circs = measurement_subcircuits(tag)
+	
+	circs = measurement_subcircuits("x_1_x_abcd")
 	
 	layer_1 = vcat(
 		vcat(map(circs["zzzz_1"], ancs["layer_1_zzzz"])...), 

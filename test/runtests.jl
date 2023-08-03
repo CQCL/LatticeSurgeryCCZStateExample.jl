@@ -383,10 +383,6 @@ end
     end
 end
 
-@testset "Is any single syndrome postselected out?" begin
-    
-end
-
 @testset "Is d = 2 fault tolerance correctly diagnosed?" begin
     @test LS.is_d_2_fault_tolerant(LS.single_memory_circuit())
     @test !LS.is_d_2_fault_tolerant(LS.d_2_repetition_code_circuit())
@@ -440,7 +436,8 @@ end
 To show that everything works as we think it should, we count two-qubit
 gates in circuits.
 """
-function n_two_qubit_gates(layer::LS.Layer)
+function n_two_qubit_gates(gatelist)
+    count(gate -> length(LS.qubits(gate)) == 2, gatelist)
 end
 
 
@@ -448,8 +445,24 @@ end
     #=
     It's easier to test subcircuits, and gives us more confidence anyway.
     =#
-    
+    tag, anc, round = "test", (1, 1), 1
+    gatelists = map(f -> f(tag, anc, round),
+                [LS.zzzz_meas, LS.zzzz_row_meas, LS.xxxx_meas,
+                    LS.se_xxx_meas, LS.sw_xxx_meas, LS.ne_xxx_meas,
+                    LS.up_xx_meas, LS.zxzx_meas, LS.zxzx_col_meas,
+                    LS.xzxz_meas, LS.left_zz_meas, LS.right_zz_meas,
+                    LS.down_xx_meas, LS.right_xx_meas, LS.left_xx_meas,
+                    LS.down_zz_meas, LS.up_zz_meas, LS.nw_zz_meas,
+                    LS.sw_zz_meas])
+    counts = [4, 4, 4, 3, 3, 3, 2, 4, 4, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    for (gatelist, count) in zip(gatelists, counts)
+        @test n_two_qubit_gates(gatelist) == count
+    end
 
+    @test n_two_qubit_gates(LS.x_1_x_abcd_meas()) == 2 * (2 * 15 + 3 * 2 + 4 * 17) 
+    @test n_two_qubit_gates(LS.x_abcdefgh_meas()) == 2 * (2 * 18 + 4 * 23)
+    @test n_two_qubit_gates(LS.x_3_x_aceg_meas()) == 2 * (2 * 24 + 3 + 4 * 22)
+    @test n_two_qubit_gates(LS.x_2_x_abef_meas()) == 2 * (2 * 25 + 4 * 23)
 end
 
 """
