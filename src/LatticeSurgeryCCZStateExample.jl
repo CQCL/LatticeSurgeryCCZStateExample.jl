@@ -455,6 +455,7 @@ end
 function lattice_surgery_circuit()
 	
 	layers = [
+				Layer(prep_data_in_plus(), plus_prep_stabs()),
 				Layer(x_1_x_abcd_meas(), x_1_x_abcd_stabs()),
 				Layer(x_abcdefgh_meas(), x_abcdefgh_stabs()),
 				Layer(x_3_x_aceg_meas(), x_3_x_aceg_stabs()),
@@ -769,6 +770,16 @@ function measurement_subcircuits(tag)
 	subcircuits
 end
 
+function prep_data_in_plus()
+	data_qubits = collect(Iterators.product(0:2:10, 0:2:22))[1 : end]
+	map(q -> Preparation(x_on(q)), data_qubits)
+end
+
+function plus_prep_stabs()
+	data_qubits = collect(Iterators.product(0:2:10, 0:2:22))[1 : end]
+	map(q -> x_on(q), data_qubits)
+end
+
 function x_1_x_abcd_ancs()
 	layer_1_zzzz = [(1, 5), (1, 9), (1, 13), (1, 17), (1, 21)]
 	layer_1_xxxx = [(5, 9), (5, 13), (5, 17)]
@@ -799,9 +810,11 @@ end
 
 function x_1_x_abcd_meas()
 	ancs = x_1_x_abcd_ancs()
-	
+
 	circs = measurement_subcircuits("x_1_x_abcd")
 	
+	layer_0 = vcat(map(circs["zxzx_1"], ancs["layer_2_zxzx"])...)
+
 	layer_1 = vcat(
 		vcat(map(circs["zzzz_1"], ancs["layer_1_zzzz"])...), 
 		vcat(map(circs["xxxx_1"], ancs["layer_1_xxxx"])...),
@@ -810,8 +823,7 @@ function x_1_x_abcd_meas()
 		)
 
 	layer_2 = vcat(
-		vcat(map(circs["up_xx_1"], ancs["layer_2_up_xx"])...),
-		vcat(map(circs["zxzx_1"], ancs["layer_2_zxzx"])...), 
+		vcat(map(circs["up_xx_1"], ancs["layer_2_up_xx"])...), 
 		vcat(map(circs["zzzz_1"], ancs["layer_2_zzzz"])...),
 		vcat(map(circs["left_zz_1"], ancs["layer_2_left_zz"])...),
 		vcat(map(circs["sw_zz_1"], ancs["layer_2_sw_zz"])...),
@@ -819,26 +831,28 @@ function x_1_x_abcd_meas()
 		)
 
 	layer_3 = vcat(map(circs["down_xx_1"], ancs["layer_3_down_xx"])...)
-
-	layer_4 = vcat(
+	
+	layer_4 = 	vcat(map(circs["zxzx_2"], ancs["layer_2_zxzx"])...)
+	
+	layer_5 = vcat(
 		vcat(map(circs["zzzz_2"], ancs["layer_1_zzzz"])...), 
 		vcat(map(circs["xxxx_2"], ancs["layer_1_xxxx"])...),
 		vcat(map(circs["se_xxx_2"], ancs["layer_1_se_xxx"])...),
 		vcat(map(circs["ne_xxx_2"], ancs["layer_1_ne_xxx"])...)
 		)
 
-	layer_5 = vcat(
+	layer_6 = vcat(
 		vcat(map(circs["up_xx_2"], ancs["layer_2_up_xx"])...),
-		vcat(map(circs["zxzx_2"], ancs["layer_2_zxzx"])...), 
 		vcat(map(circs["zzzz_2"], ancs["layer_2_zzzz"])...),
 		vcat(map(circs["left_zz_2"], ancs["layer_2_left_zz"])...),
 		vcat(map(circs["sw_zz_2"], ancs["layer_2_sw_zz"])...),
 		vcat(map(circs["nw_zz_2"], ancs["layer_2_nw_zz"])...)
 		)
 
-	layer_6 = vcat(map(circs["down_xx_2"], ancs["layer_3_down_xx"])...)
+	layer_7 = vcat(map(circs["down_xx_2"], ancs["layer_3_down_xx"])...)
 
-	vcat(layer_1, layer_2, layer_3, layer_4, layer_5, layer_6)
+	vcat(layer_0, layer_1, layer_2, layer_3,
+			layer_4, layer_5, layer_6, layer_7)
 end
 
 function x_1_x_abcd_stabs()
@@ -1118,9 +1132,9 @@ function x_2_x_abef_meas()
 	circs = measurement_subcircuits(tag)
 
 	layer_1 = vcat(
+		vcat(map(circs["xxxx_1"], ancs["layer_1_xxxx"])...),
 		vcat(map(circs["zzzz_1"], ancs["layer_1_zzzz"])...),
-		vcat(map(circs["zzzz_row_1"], ancs["layer_1_zzzz_row"])...),
-		vcat(map(circs["xxxx_1"], ancs["layer_1_xxxx"])...)
+		vcat(map(circs["zzzz_row_1"], ancs["layer_1_zzzz_row"])...)
 		)
 
 	layer_2 = vcat(
@@ -1144,9 +1158,9 @@ function x_2_x_abef_meas()
 		)
 
 	layer_5 = vcat(
+		vcat(map(circs["xxxx_2"], ancs["layer_1_xxxx"])...),
 		vcat(map(circs["zzzz_2"], ancs["layer_1_zzzz"])...),
-		vcat(map(circs["zzzz_row_2"], ancs["layer_1_zzzz_row"])...),
-		vcat(map(circs["xxxx_2"], ancs["layer_1_xxxx"])...)
+		vcat(map(circs["zzzz_row_2"], ancs["layer_1_zzzz_row"])...)
 		)
 
 	layer_6 = vcat(
@@ -1247,6 +1261,7 @@ function logical_measurement_results(comp_state::ComputationalState)
 
 	parity(names) = reduce(xor, map(name -> phys_results[name], names))
 	name(tag, stab) = coord -> measurement_name(tag, stab, coord, 2)
+	
 	# measurement_name(tag, stab, anc, round)
 	x_1_x_abcd_names = vcat(
 		map(name("x_1_x_abcd", "zxzx"),
@@ -1309,59 +1324,145 @@ end
 """
 `is_postselected(comp_state::ComputationalState, log_results)`
 
-If any stabilizer measurement has returned a 1, the result will be
-postselected.
-
-Also, if the logical outputs have odd parity, we postselect.
+We begin in an all-|+> state, and measure operators that may or may
+not commute with those measured on the same qubits previously.
+For those operators which commute, we require that their eigenvalues
+remain identical to those measured most recently.  
+For those which do not commute with a recently measured operator, there
+is no such requirement.
+Note that every set of measurements is repeated twice, so we're
+guaranteed that every operator is involved in at least one classical
+check.
 """
 function is_postselected(comp_state::ComputationalState, log_results)
 	meas_output = comp_state.meas_output
 
 	parity(nms) = reduce(xor, map(nm -> meas_output[nm], nms))
 
+	nm_1(tag, stab) = coord -> [measurement_name(tag, stab, coord, 1)]
+	
 	function nms(tag, stab)
 		coord -> [measurement_name(tag, stab, coord, rnd)
 					for rnd in 1:2]
 	end
+
+	function diff_nms(tag_before, tag_after, stab)
+		#=
+		   For stabilizers which are the same from one lattice surgery
+		   operation to the next, the stabilizer will be the same, and
+		   the coordinate will be the same, but the rounds and tags
+		   will be different.
+		=# 
+		coord -> [measurement_name(tag_before, stab, coord, 2), 
+					measurement_name(tag_after, stab, coord, 1)]
+	end
+
+	tags = ["x_1_x_abcd", "x_abcdefgh", "x_3_x_aceg", "x_2_x_abef"]
+
+	tag = tags[1]
+	x_1_x_abcd_pairs = vcat(
+		map(nm_1(tag, "xxxx"), [(5, 9), (5, 13), (5, 17)]),
+		map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17)]),
+		map(nm_1(tag, "xxx"), [(5, 5), (5, 21)]),
+		map(nms(tag, "xxx"), [(5, 5), (5, 21)]),
+		map(nm_1(tag, "down_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), (1, 23)]),
+		map(nms(tag, "down_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), (1, 23)]),
+		map(nm_1(tag, "up_xx"), [(1, 3), (1, 7), (1, 11), (1, 15), (1, 19)]),
+		map(nms(tag, "up_xx"), [(1, 3), (1, 7), (1, 11), (1, 15), (1, 19)]),
+		map(nms(tag, "zzzz"), [(1, 5), (1, 9), (1, 13), (1, 17), (1, 21),
+									(5, 7), (5, 11), (5, 15), (5, 19)]),
+		map(nms(tag, "zxzx"), [(3, 5), (3, 9), (3, 13), (3, 17), (3, 21)]),
+		map(nms(tag, "zz"), [(5, 5), (5, 21), (7, 9), (7, 13), (7, 17)])
+		)
 	
-	tag = "x_1_x_abcd"
-	x_1_x_abcd_names = vcat(
-		vcat(map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17)])...),
-		vcat(map(nms(tag, "xxx"), [(5, 5), (5, 21)])...),
-		vcat(map(nms(tag, "down_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), (1, 23)])...),
-		vcat(map(nms(tag, "up_xx"), [(1, 3), (1, 7), (1, 11), (1, 15), (1, 19)])...),
-		vcat(map(nms(tag, "zzzz"), [(1, 5), (1, 9), (1, 13), (1, 17), (1, 21)])...)
-		)
-		
-	tag = "x_abcdefgh"
-	x_abcdefgh_names = vcat(
-		vcat(map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)])...),
-		vcat(map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23), (9, 11), (9, 15), (9, 19), (9, 23)])...),
-		vcat(map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), (9, 7), (9, 11), (9, 15), (9, 19)])...),
-		vcat(map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21), (9, 9), (9, 13), (9, 17), (9, 21)])...)
+	x_1_x_a_pairs = vcat(
+		map(diff_nms(tags[1], tags[2], "xxxx"), [(5, 9), (5, 13), (5, 17)]),
+		map(diff_nms(tags[1], tags[2], "zzzz"), [(1, 9), (1, 9), (1, 9), (1, 9), 
+													(5, 11), (5, 15), (5, 19)]),
+		map(diff_nms(tags[1], tags[2], "zxzx"), [(3, 9), (3, 13), (3, 17), (3, 21)])
 		)
 
-	tag = "x_3_x_aceg"
-	x_3_x_aceg_names = vcat(
-		vcat(map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)])...),
-		vcat(map(nms(tag, "xxx"), [(5, 5)])...),
-		vcat(map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
-			(9, 3), (9, 7), (9, 11), (9, 15), (9, 19)])...),
-		vcat(map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
-			(9, 7), (9, 11), (9, 15), (9, 19), (9, 23)])...),
-		vcat(map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
-			(9, 5), (9, 9), (9, 13), (9, 17), (9, 21)])...)
+	tag = tags[2]
+	x_abcdefgh_pairs = vcat(
+		map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)]),
+		map(nm_1(tag, "down_xx"), [(9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
+									(9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(nm_1(tag, "up_xx"), [(9, 7), (9, 11), (9, 15), (9, 19)]),
+		map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
+								(9, 7), (9, 11), (9, 15), (9, 19)]),
+		map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
+								(5, 11), (5, 15), (5, 19),
+								(9, 9), (9, 13), (9, 17), (9, 21)]),
+		map(nms(tag, "zxzx"), [(3, 9), (3, 13), (3, 17), (3, 21)]),
+		map(nm_1(tag, "xzxz"), [(7, 9), (7, 13), (7, 17)]),
+		map(nms(tag, "xzxz"), [(7, 9), (7, 13), (7, 17), (7, 21)]),
+		map(nms(tag, "zz"), [(5, 7), (5, 23)])
+		)
+	
+	x_a_x_3_pairs = vcat(
+		map(diff_nms(tags[2], tags[3], "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)]),
+		map(diff_nms(tags[2], tags[3], "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
+													(5, 11), (5, 15), (5, 19),
+													(9, 9), (9, 13), (9, 17), (9, 21)]),
+		map(diff_nms(tags[2], tags[3], "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
+													(9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(diff_nms(tags[2], tags[3], "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
+													(9, 7), (9, 11), (9, 15), (9, 19)]),
+		[diff_nms(tags[2], tags[3], "zz")((5, 23))],
+		map(diff_nms(tags[2], tags[3], "zxzx"), [(3, 13), (3, 21)]),
+		map(diff_nms(tags[2], tags[3], "xzxz"), [(7, 13), (7, 21)])
 		)
 
-	tag = "x_2_x_abef"
-	x_2_x_abef_names = vcat(
-		vcat(map(nms(tag, "xxxx"), [(5, 5), (5, 9), (5, 13), (5, 17), (5, 21)])...),
-		vcat(map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
-									(9, 11), (9, 15), (9, 19), (9, 23)])...),
-		vcat(map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
-									(9, 7), (9, 11), (9, 15), (9, 19)])...),
-		vcat(map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
-									(9, 9), (9, 13), (9, 17), (9, 21)])...)
+	tag = tags[3]
+	x_3_x_aceg_pairs = vcat(
+		map(nms(tag, "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)]),
+		[nm_1(tag, "xxx")((5, 5))],
+		[nms(tag, "xxx")((5, 5))],
+		[nm_1(tag, "up_xx")((9, 3))],
+		map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
+			(9, 3), (9, 7), (9, 11), (9, 15), (9, 19)]),
+		[nm_1(tag, "down_xx")((9, 7))],
+		map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
+			(9, 7), (9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
+			(5, 7), (5, 11), (5, 15), (5, 19),
+			(9, 5), (9, 9), (9, 13), (9, 17), (9, 21)]),
+		map(nms(tag, "zz"), [(3, 9), (3, 17), (5, 5), (5, 23), (7, 9), (7, 17)]),
+		map(nms(tag, "zxzx"), [(3, 13), (3, 21)]),
+		map(nms(tag, "xzxz"), [(7, 5), (7, 13), (7, 21)]),
+		)
+
+	x_3_x_2_pairs = vcat(
+		map(diff_nms(tags[3], tags[4], "xxxx"), [(5, 9), (5, 13), (5, 17), (5, 21)]),
+		map(diff_nms(tags[3], tags[4], "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
+			(5, 7), (5, 11), (5, 15), (5, 19), (9, 9), (9, 13), (9, 17), (9, 21)]),
+		map(diff_nms(tags[3], tags[4], "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23), 
+													(9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(diff_nms(tags[3], tags[4], "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19), 
+													(9, 7), (9, 11), (9, 15), (9, 19)]),
+		map(diff_nms(tags[3], tags[4], "zz"), [(3, 9), (5, 23), (7, 9)]),
+		[diff_nms(tags[3], tags[4], "zxzx")((3, 21))],
+		[diff_nms(tags[3], tags[4], "xzxz")((7, 21))]
+		)
+
+	tag = tags[4]
+	x_2_x_abef_pairs = vcat(
+		map(nms(tag, "xxxx"), [(5, 5), (5, 9), (5, 13), (5, 17), (5, 21)]),
+		map(nms(tag, "zzzz"), [(1, 9), (1, 13), (1, 17), (1, 21),
+								(5, 1), (5, 7), (5, 11), (5, 15), (5, 19),
+									(9, 9), (9, 13), (9, 17), (9, 21)]),
+		map(nms(tag, "down_xx"), [(1, 11), (1, 15), (1, 19), (1, 23),
+									(9, 11), (9, 15), (9, 19), (9, 23)]),
+		map(nms(tag, "up_xx"), [(1, 7), (1, 11), (1, 15), (1, 19),
+									(9, 7), (9, 11), (9, 15), (9, 19)]),
+		map(nm_1(tag, "xx"), [(3, 1), (7, 1)]),
+		map(nms(tag, "xx"), [(3, 1), (7, 1)]),
+		map(nms(tag, "zz"), [(3, 5), (3, 9), (3, 13), (5, 23),
+								(7, 5), (7, 9), (7, 13)]),
+		map(nms(tag, "zxzx"), [(3, 17), (3, 21)]),
+		map(nms(tag, "xzxz"), [(7, 17), (7, 21)]),
+		[nms(tag, "zxzx_col")((5, 3))]
 		)
 
 	data_name = coord -> measurement_name("s_x_meas", "x", coord, 3)
@@ -1381,8 +1482,11 @@ function is_postselected(comp_state::ComputationalState, log_results)
 	postselect_parity = Bool(mod(sum([log_results[key]
 								for key in log_result_keys]), 2))
 
-	nd_stab_names = vcat(x_1_x_abcd_names, x_abcdefgh_names, x_3_x_aceg_names, x_2_x_abef_names)
-	error_detected = any(map(key -> meas_output[key] == 0x01, nd_stab_names))
+	all_pairs = vcat(x_1_x_abcd_pairs, x_1_x_a_pairs, x_abcdefgh_pairs, x_a_x_3_pairs,
+					x_3_x_aceg_pairs, x_3_x_2_pairs, x_2_x_abef_pairs)
+	
+	error_detected = any(map(pair -> parity(pair) == 0x01, all_pairs))
+	
 	error_detected = error_detected || any(map(st -> mod(meas_output[st[1]] + meas_output[st[2]], 2) == 0x01,
 								weight_two_stab_sets))
 

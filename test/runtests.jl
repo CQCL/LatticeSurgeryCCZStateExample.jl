@@ -386,9 +386,7 @@ end
 @testset "Is d = 2 fault tolerance correctly diagnosed?" begin
     @test LS.is_d_2_fault_tolerant(LS.single_memory_circuit())
     @test !LS.is_d_2_fault_tolerant(LS.d_2_repetition_code_circuit())
-    # @test LS.is_d_2_fault_tolerant(LS.lattice_surgery_circuit()) # slow
-    # Want to get another circuit that has the ZZZZ measurement set up
-    # backwards so we can assert that it doesn't work.
+    @test LS.is_d_2_fault_tolerant(LS.lattice_surgery_circuit()) # slow
 end
 
 @testset "Combining ComputationalStates" begin
