@@ -1745,8 +1745,8 @@ with one fault, then takes pairs of those outputs and XORs the
 measurement results and multiplies the Paulis to see whether the final
 effect of both faults will be a logical that's not post-selected out.  
 
-Note: As of 17 July 2023:
-malicious_fault_pairs(lattice_surgery_circuit()) == 5926 
+Note: As of 8 Aug 2023:
+malicious_fault_pairs(lattice_surgery_circuit()) == 84873 
 """
 function malicious_fault_pairs(circuit)
 	faulty_circs = faulty_circuits(circuit)
