@@ -81,6 +81,8 @@ end
 # const PointT = Tuple{Int, Int}
 qubits(gate::QC.sCNOT) = [gate.q1, gate.q2]
 qubits(gate::QC.sPhase) = [gate.q]
+qubits(gate::QC.sZ) = [gate.q]
+qubits(gate::QC.sHadamard) = [gate.q]
 
 """
 A fault is a Pauli that occurs before or after a gate in a circuit.
@@ -104,11 +106,14 @@ that layer.
 struct Layer
 	gatelist::Vector{Any}
 	stabs::Vector{QC.PauliOperator}
+	use_whole_group::Bool
 end
+Layer(gatelist, stabs) = Layer(gatelist, stabs, false)
 gatelist(layer::Layer) = layer.gatelist
 qubits(layer::Layer) = reduce(union, map(qubits, gatelist(layer)))
 qubits(layers::Vector{Layer}) = reduce(union, map(qubits, layers))
 stabs(layer::Layer) = layer.stabs
+use_whole_group(layer::Layer) = layer.use_whole_group
 function Base.:(==)(l1::Layer, l2::Layer)
 	(l1.gatelist == l2.gatelist) && (l1.stabs == l2.stabs)
 end
@@ -251,11 +256,12 @@ layer thereafter.
 """
 function circuit_after_fault(c::Circuit)
 	f = fault(c)
-	layrrs = layers(c)
-	layrr = layrrs[f.layer_dx]
-	sublayer = Layer(gatelist(layrr)[f.gate_dx + 1 : end], stabs(layrr))
+	layrs = layers(c)
+	layr = layrs[f.layer_dx]
+	sublayer = Layer(gatelist(layr)[f.gate_dx + 1 : end], stabs(layr),
+						use_whole_group(layr))
 
-	Circuit(vcat(sublayer, layrrs[f.layer_dx + 1 : end]), f,
+	Circuit(vcat(sublayer, layrs[f.layer_dx + 1 : end]), f,
 				c.final_stabs, c.log_ops, c.log_meas_res, c.postselect, c.log_corrections)
 end
 
@@ -287,7 +293,22 @@ function apply(layer::Layer, comp_state::ComputationalState)
 		comp_state = apply(gate, comp_state)
 	end
 
-	apply_stabs(stabs(layer), comp_state)
+	reduce_error(layer, comp_state)
+end
+
+function reduce_error(layer::Layer, comp_state::ComputationalState)
+	if use_whole_group(layer)
+		group = generated_group(stabs(layer))
+		new_pauli = argmin(weight, [comp_state.pauli] .* group)
+		return ComputationalState(new_pauli, comp_state.meas_output)
+	else
+		return apply_stabs(stabs(layer), comp_state)
+	end
+end
+
+function generated_group(gens)
+	pauli_product = subset -> prod(subset, init=identity_pauli(nq))
+	collect(map(pauli_product, IT.subsets(gens)))
 end
 
 function apply_gate_to_pauli(gate, pauli::QC.PauliOperator)
@@ -449,6 +470,105 @@ function single_memory_circuit()
 	end
 
 	Circuit([Layer(gates, stabs)], default_fault, stabs, log_ops,
+				log_meas_res, postselect, log_corrections)
+end
+
+"""
+`full_832_circuit()`
+
+We run the same fault pair analysis on the circuit we actually use in
+the experiment, so we can try to compare logical error rates.
+
+Note that, due to the QCCD architecture, we don't label these qubits
+with Cartesian co-ordinates.
+
+They're also zero-indexed in the paper, so we use a few custom gate
+functions to adjust the indices. 
+"""
+function full_832_circuit()
+	tag = "full_832"
+
+	z_op(zero_q) = QC.single_z(nq, zero_q + 1)
+	x_op(zero_q) = QC.single_x(nq, zero_q + 1)
+	zero_prep(zero_q) = Preparation(z_op(zero_q))
+	H(zero_q) = QC.sHadamard(zero_q + 1)
+	CNOT(zero_ctrl, zero_targ) = QC.sCNOT(zero_ctrl + 1, zero_targ + 1)
+	z_meas(meas_name, zero_q) = Measurement(meas_name, z_op(zero_q))
+	z_gate(zero_q) = QC.sZ(zero_q + 1)
+
+	initial_zeros = map(zero_prep, collect(0:7))
+
+	non_ft_prep = [
+					H(0), H(1), H(2), H(6),
+					CNOT(0, 4), CNOT(1, 5), CNOT(6, 7), CNOT(2, 3),
+					CNOT(0, 1), CNOT(1, 2), CNOT(2, 0), CNOT(1, 6),
+					CNOT(6, 0), CNOT(0, 1)
+	]
+
+	prep_flag = [
+					zero_prep(8), zero_prep(9), H(9), 
+					CNOT(4, 8), CNOT(9, 1), CNOT(1, 8), CNOT(9, 4),
+					CNOT(3, 8), CNOT(9, 6), CNOT(9, 3), CNOT(6, 8),
+					H(9), z_meas("z_1346", 8), z_meas("x_1346", 9)
+	]
+
+	fake_transversal_t = map(z_gate, collect(0:7))
+
+	# For the sake of an apples-to-apples comparison, we include only
+	# the stages of the circuit that are involved in CCZ|+++> state
+	# preparation, and not the CNOT or measurements
+
+	# destructive_x_measurement = [H(2), H(3), H(6), H(7)]
+
+	# x_meas_flag = [zero_prep(8), zero_prep(9), H(8),
+	# 				CNOT(8, 9),
+	# 				CNOT(8, 0), CNOT(8, 1), CNOT(8, 4), CNOT(8, 5),
+	# 				CNOT(8, 9),
+	# 				H(8), z_meas(8), z_meas(9)]
+	# final_destructive_measurement = [z_meas(0), z_meas(1),
+	# 									z_meas(4), z_meas(5)]
+	
+	plus_gates = vcat(initial_zeros, non_ft_prep, prep_flag)
+
+	x_on_set(st) = prod(map(x_op, st))
+	z_on_set(st) = prod(map(z_op, st))
+
+	plus_stabs = [x_on_set(collect(0:7)), z_on_set(collect(0:7)),
+				z_on_set((0, 1, 2, 3)),
+				z_on_set((0, 1, 4, 5)),
+				z_on_set((0, 2, 4, 6)),
+				x_on_set((0, 1, 2, 3)),
+				x_on_set((0, 1, 4, 5)),
+				x_on_set((0, 2, 4, 6))]
+
+	stabs = [x_on_set(collect(0:7)), z_on_set(collect(0:7)),
+				z_on_set((0, 1, 2, 3)),
+				z_on_set((0, 1, 4, 5)),
+				z_on_set((0, 2, 4, 6))]
+
+	logs = (
+			map(z_on_set, [(0, 4), (0, 2), (0, 1)]),
+			map(x_on_set, [(0, 1, 2, 3), (0, 1, 4, 5), (0, 2, 4, 6)])
+		)
+
+	default_fault = Fault(identity_pauli(nq), 1, 0)
+
+	function log_meas_res(comp_state::ComputationalState)
+		Dict{String, UInt8}()
+	end
+
+	function postselect(comp_state::ComputationalState, log_results)
+		any(val == 0x01 for val in values(comp_state.meas_output))
+	end
+
+	function log_corrections(comp_state, log_results)
+		comp_state
+	end
+
+	layers = [Layer(plus_gates, plus_stabs, true),
+				Layer(fake_transversal_t, stabs)]
+
+	Circuit(layers, default_fault, stabs, logs,
 				log_meas_res, postselect, log_corrections)
 end
 
