@@ -1,6 +1,6 @@
 # LatticeSurgeryCCZStateExample
 
-We used this library in [our paper](https://arxiv.org/abs/2309.09893) to determine the number of malicious fault pairs in a lattice-surgery-based $\left \vert \textsc{ccz} \right \rangle$ state preparation at distance two.
+We used this library in [our paper](https://arxiv.org/abs/2309.09893) to determine the number of malicious fault pairs in a lattice-surgery-based $\left \vert \mathrm{CCZ} \right \rangle$ state preparation at distance two.
 
 ## How To Replicate The Paper
 
