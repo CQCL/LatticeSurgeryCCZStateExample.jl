@@ -85,17 +85,23 @@ qubits(gate::QC.sZ) = [gate.q]
 qubits(gate::QC.sHadamard) = [gate.q]
 
 """
-A fault is a Pauli that occurs before or after a gate in a circuit.
+A fault is a Pauli that occurs after a preparation or gate in a
+circuit, or before a measurement.
+Locating these faults in time requires us to use the `layer_dx` and
+`gate_dx` fields.
+Each of these faults also occurs with some probability, which we take
+to be `coeff` times p.
 """
 struct Fault
 	pauli::QC.PauliOperator
 	layer_dx::Int
 	gate_dx::Int
+	coeff::Float64
 end
 
 function Base.:(==)(f1::Fault, f2::Fault)
 	(f1.pauli == f2.pauli) && (f1.layer_dx == f2.layer_dx) &&
-	(f1.gate_dx == f2.gate_dx)
+	(f1.gate_dx == f2.gate_dx) && (f1.coeff == f2.coeff)
 end
 
 """
@@ -384,7 +390,7 @@ function d_2_repetition_code_circuit()
 	anc = (5, 5)
 	gates = vcat(down_zz_meas(tag, anc, 1), down_zz_meas(tag, anc, 2))
 	stabs = [down_zz_stab(anc)]
-	default_fault = Fault(identity_pauli(nq), 1, 0)
+	default_fault = Fault(identity_pauli(nq), 1, 0, 1.)
 	log_ops = ([z_on((4, 4))], [x_on_set([(4, 4), (6, 4)])])
 
 	function log_meas_res(comp_state::ComputationalState)
@@ -414,7 +420,7 @@ function postselected_d_2_repetition_code_circuit()
 	anc = (5, 5)
 	gates = vcat(down_zz_meas(tag, anc, 1), down_zz_meas(tag, anc, 2))
 	stabs = [down_zz_stab(anc)]
-	default_fault = Fault(identity_pauli(nq), 1, 0)
+	default_fault = Fault(identity_pauli(nq), 1, 0, 1.)
 	log_ops = ([z_on((4, 4))], [x_on_set([(4, 4), (6, 4)])])
 
 	function log_meas_res(comp_state::ComputationalState)
@@ -453,7 +459,7 @@ function single_memory_circuit()
 				down_xx_stab((1, 5)),
 				up_xx_stab((1, 1))]
 
-	default_fault = Fault(identity_pauli(nq), 1, 0)
+	default_fault = Fault(identity_pauli(nq), 1, 0, 1.)
 
 	log_ops = ([z_on_set([(0, 4), (2, 4)])], [x_on_set([(0, 2), (0, 4)])])
 	
@@ -551,7 +557,7 @@ function full_832_circuit()
 			map(x_on_set, [(0, 1, 2, 3), (0, 1, 4, 5), (0, 2, 4, 6)])
 		)
 
-	default_fault = Fault(identity_pauli(nq), 1, 0)
+	default_fault = Fault(identity_pauli(nq), 1, 0, 1.)
 
 	function log_meas_res(comp_state::ComputationalState)
 		Dict{String, UInt8}()
@@ -583,7 +589,7 @@ function lattice_surgery_circuit()
 				Layer(s_x_meas(), Vector{QC.PauliOperator}())
 			]
 	
-	default_fault = Fault(identity_pauli(nq), 1, 0)
+	default_fault = Fault(identity_pauli(nq), 1, 0, 1.)
 	
 	final_stabs = output_stabilizers()
 	
@@ -1733,7 +1739,7 @@ end
 
 function input_faults(circuit::Circuit)
 	ps(qubit) = paulis_on(nq, qubit)
-	fs(qubit) = map(p -> Fault(p, 1, 0), ps(qubit))
+	fs(qubit) = map(p -> Fault(p, 1, 0, 1/3.), ps(qubit))
 	vcat(map(fs, qubits(circuit))...)
 end
 
@@ -1768,18 +1774,27 @@ end
 
 function fault_set(dx_dx_meas::Tuple{Int, Int, Measurement})
 	layer_dx, gate_dx, meas = dx_dx_meas
-	[Fault(flip_pauli(meas), layer_dx, gate_dx-1)]
+	[Fault(flip_pauli(meas), layer_dx, gate_dx - 1, 1.)]
 end
 
 function fault_set(dx_dx_prep::Tuple{Int, Int, Preparation})
 	layer_dx, gate_dx, prep = dx_dx_prep
-	[Fault(flip_pauli(prep), layer_dx, gate_dx)]
+	[Fault(flip_pauli(prep), layer_dx, gate_dx, 1.)]
 end
 
 function fault_set(dx_dx_gate::Tuple{Int, Int, Any})
 	layer_dx, gate_dx, gate = dx_dx_gate
-	map(pauli -> Fault(pauli, layer_dx, gate_dx),
-						paulis_on(nq, qubits(gate)))
+
+	coeff = 0.
+	qs = qubits(gate)
+	if length(qs) == 1
+		coeff = 1/3.
+	elseif length(qs) == 2
+		coeff = 1/15.
+	end
+
+	map(pauli -> Fault(pauli, layer_dx, gate_dx, coeff),
+										paulis_on(nq, qs))
 end
 
 function is_logical(circuit, pauli)
@@ -1891,6 +1906,27 @@ function malicious_fault_pairs(circuit)
 
 	n_malicious_pairs
 end
+
+function malicious_fault_pair_prob(circuit)
+	faulty_circs = faulty_circuits(circuit)
+	single_fault_states = map(run, faulty_circs)
+	
+	f_prob = 0
+	n_states = length(single_fault_states)
+	Threads.@threads for dx_1 in 1:n_states
+		for dx_2 in dx_1 : n_states
+			pair = (single_fault_states[dx_1], single_fault_states[dx_2])
+			if contains_logical_error(circuit, combine(pair[1], pair[2]))
+				c_1 = faulty_circs[dx_1].fault.coeff
+				c_2 = faulty_circs[dx_2].fault.coeff
+				f_prob += c_1 * c_2
+			end
+		end
+	end
+
+	f_prob
+end
+
 
 """
 Same as `malicious_fault_pairs`, but doesn't include input faults, for
